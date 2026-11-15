@@ -4,8 +4,10 @@ const STORAGE_KEYS = {
     company: 'pkb_off_company',
     phone: 'pkb_off_phone',
     email: 'pkb_off_email',
+    website: 'pkb_off_website',
     bank: 'pkb_off_bank',
     logo: 'pkb_off_logo',
+    logoCleared: 'pkb_off_logo_cleared',
     signature: 'pkb_off_sig',
     currency: 'pkb_off_currency',
     invPrefix: 'pkb_off_inv_prefix',
@@ -14,6 +16,17 @@ const STORAGE_KEYS = {
     receipts: 'pkb_off_receipts',
     invSeq: 'pkb_off_inv_seq',
     rcptSeq: 'pkb_off_rcpt_seq'
+};
+
+const PKB_DEFAULTS = {
+    name: 'PeeKayBee Hospitality',
+    phone: '09115054181',
+    email: 'peekaybeehospitality@gmail.com',
+    website: '',
+    bank: 'Monie Point\n9115054181\nPeeKayBee Prime/Hospitality',
+    currency: '₦|Naira|Kobo',
+    invPrefix: 'INV-',
+    rcptPrefix: 'RCT-'
 };
 
 function safeGetJSON(key, fallback) {
@@ -29,10 +42,23 @@ function safeSetItem(key, value) {
     try {
         localStorage.setItem(key, value);
         return true;
-    } catch (err) {
-        showToast('Storage full! Try removing or using a smaller logo, or export a backup.', 'error');
+    } catch {
+        showToast('Storage full! Try using a smaller logo or export a backup.', 'error');
         return false;
     }
+}
+
+function getInitialLogo() {
+    const savedLogo = localStorage.getItem(STORAGE_KEYS.logo);
+    if (savedLogo) return savedLogo;
+    if (localStorage.getItem(STORAGE_KEYS.logoCleared) === '1') return '';
+    return window.PKB_DEFAULT_LOGO || '';
+}
+
+function getInitialField(storageKey, defaultVal) {
+    const val = localStorage.getItem(storageKey);
+    if (val === null) return defaultVal;
+    return val;
 }
 
 const STATE = {
@@ -40,15 +66,16 @@ const STATE = {
     editingInvoiceId: null,
     editingReceiptId: null,
     company: {
-        name: localStorage.getItem(STORAGE_KEYS.company) ?? 'PeeKayBee Hospitality Company',
-        phone: localStorage.getItem(STORAGE_KEYS.phone) ?? '',
-        email: localStorage.getItem(STORAGE_KEYS.email) ?? '',
-        bank: localStorage.getItem(STORAGE_KEYS.bank) ?? '',
-        logo: localStorage.getItem(STORAGE_KEYS.logo) || '',
+        name: getInitialField(STORAGE_KEYS.company, PKB_DEFAULTS.name),
+        phone: getInitialField(STORAGE_KEYS.phone, PKB_DEFAULTS.phone),
+        email: getInitialField(STORAGE_KEYS.email, PKB_DEFAULTS.email),
+        website: getInitialField(STORAGE_KEYS.website, PKB_DEFAULTS.website),
+        bank: getInitialField(STORAGE_KEYS.bank, PKB_DEFAULTS.bank),
+        logo: getInitialLogo(),
         signature: localStorage.getItem(STORAGE_KEYS.signature) || '',
-        currency: localStorage.getItem(STORAGE_KEYS.currency) || '₦|Naira|Kobo',
-        invPrefix: localStorage.getItem(STORAGE_KEYS.invPrefix) || 'INV-',
-        rcptPrefix: localStorage.getItem(STORAGE_KEYS.rcptPrefix) || 'RCT-'
+        currency: localStorage.getItem(STORAGE_KEYS.currency) || PKB_DEFAULTS.currency,
+        invPrefix: localStorage.getItem(STORAGE_KEYS.invPrefix) || PKB_DEFAULTS.invPrefix,
+        rcptPrefix: localStorage.getItem(STORAGE_KEYS.rcptPrefix) || PKB_DEFAULTS.rcptPrefix
     },
     invoices: safeGetJSON(STORAGE_KEYS.invoices, []),
     receipts: safeGetJSON(STORAGE_KEYS.receipts, []),
@@ -132,13 +159,24 @@ function initTabNavigation() {
 
 function switchTab(tabName) {
     STATE.currentTab = tabName;
+    document.body.dataset.activeTab = tabName;
+
     document.querySelectorAll('.nav-btn').forEach((b) => {
         b.classList.toggle('active', b.dataset.tab === tabName);
     });
-    document.getElementById('tab-invoice-view').style.display = tabName === 'invoice' ? 'flex' : 'none';
-    document.getElementById('tab-receipt-view').style.display = tabName === 'receipt' ? 'flex' : 'none';
-    document.getElementById('tab-history-view').style.display = tabName === 'history' ? 'block' : 'none';
-    document.getElementById('tab-settings-view').style.display = tabName === 'settings' ? 'block' : 'none';
+
+    const invView = document.getElementById('tab-invoice-view');
+    const rcptView = document.getElementById('tab-receipt-view');
+    const histView = document.getElementById('tab-history-view');
+    const setView = document.getElementById('tab-settings-view');
+
+    invView.style.display = tabName === 'invoice' ? 'flex' : 'none';
+    rcptView.style.display = tabName === 'receipt' ? 'flex' : 'none';
+    histView.style.display = tabName === 'history' ? 'block' : 'none';
+    setView.style.display = tabName === 'settings' ? 'block' : 'none';
+
+    invView.classList.toggle('active-view', tabName === 'invoice');
+    rcptView.classList.toggle('active-view', tabName === 'receipt');
 
     if (tabName === 'history') {
         renderHistory();
@@ -154,6 +192,7 @@ function initCompanyProfile() {
         { id: 'co_name', key: 'name', storage: STORAGE_KEYS.company },
         { id: 'co_phone', key: 'phone', storage: STORAGE_KEYS.phone },
         { id: 'co_email', key: 'email', storage: STORAGE_KEYS.email },
+        { id: 'co_website', key: 'website', storage: STORAGE_KEYS.website },
         { id: 'co_bank', key: 'bank', storage: STORAGE_KEYS.bank },
         { id: 'co_currency', key: 'currency', storage: STORAGE_KEYS.currency },
         { id: 'co_inv_prefix', key: 'invPrefix', storage: STORAGE_KEYS.invPrefix },
@@ -163,51 +202,136 @@ function initCompanyProfile() {
     fields.forEach(({ id, key, storage }) => {
         const el = document.getElementById(id);
         if (!el) return;
-        el.value = STATE.company[key];
+        el.value = STATE.company[key] || '';
 
-        const eventName = el.tagName === 'SELECT' ? 'change' : 'input';
-        el.addEventListener(eventName, () => {
-            STATE.company[key] = el.value;
-            safeSetItem(storage, el.value);
-            if (key === 'currency') {
-                applyCurrencySymbols();
-                syncReceiptWordsFromAmount();
-                renderHistory();
-            }
-            updateInvoicePreview();
-            updateReceiptPreview();
-        });
+        if (!el.dataset.bound) {
+            el.dataset.bound = '1';
+            const eventName = el.tagName === 'SELECT' ? 'change' : 'input';
+            el.addEventListener(eventName, () => {
+                STATE.company[key] = el.value;
+                safeSetItem(storage, el.value);
+                if (key === 'currency') {
+                    applyCurrencySymbols();
+                    syncReceiptWordsFromAmount();
+                    renderItemsEditor();
+                    renderHistory();
+                }
+                updateInvoicePreview();
+                updateReceiptPreview();
+            });
+        }
     });
 
     updateSettingsLogoPreview();
 
     const logoInput = document.getElementById('logo_file_input');
-    if (logoInput) {
+    if (logoInput && !logoInput.dataset.bound) {
+        logoInput.dataset.bound = '1';
         logoInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
-            compressImageFile(file, 420, 200, (dataUrl) => {
+            compressImageFile(file, 420, 220, (dataUrl) => {
                 STATE.company.logo = dataUrl;
+                localStorage.removeItem(STORAGE_KEYS.logoCleared);
                 if (safeSetItem(STORAGE_KEYS.logo, dataUrl)) {
                     updateSettingsLogoPreview();
                     updateInvoicePreview();
                     updateReceiptPreview();
-                    showToast('Logo saved for offline use.', 'success');
+                    showToast('Business logo updated!', 'success');
                 }
             });
             e.target.value = '';
         });
     }
 
+    const usePkbLogoBtn = document.getElementById('btn_use_pkb_logo');
+    if (usePkbLogoBtn && !usePkbLogoBtn.dataset.bound) {
+        usePkbLogoBtn.dataset.bound = '1';
+        usePkbLogoBtn.addEventListener('click', () => {
+            STATE.company.logo = window.PKB_DEFAULT_LOGO || '';
+            localStorage.removeItem(STORAGE_KEYS.logoCleared);
+            if (STATE.company.logo) {
+                safeSetItem(STORAGE_KEYS.logo, STATE.company.logo);
+            }
+            updateSettingsLogoPreview();
+            updateInvoicePreview();
+            updateReceiptPreview();
+            showToast('PKB logo restored.', 'success');
+        });
+    }
+
     const removeLogoBtn = document.getElementById('btn_remove_logo');
-    if (removeLogoBtn) {
+    if (removeLogoBtn && !removeLogoBtn.dataset.bound) {
+        removeLogoBtn.dataset.bound = '1';
         removeLogoBtn.addEventListener('click', () => {
             STATE.company.logo = '';
             localStorage.removeItem(STORAGE_KEYS.logo);
+            safeSetItem(STORAGE_KEYS.logoCleared, '1');
             updateSettingsLogoPreview();
             updateInvoicePreview();
             updateReceiptPreview();
             showToast('Logo removed.');
+        });
+    }
+
+    const restorePkbBtn = document.getElementById('btn_restore_pkb_defaults');
+    if (restorePkbBtn && !restorePkbBtn.dataset.bound) {
+        restorePkbBtn.dataset.bound = '1';
+        restorePkbBtn.addEventListener('click', () => {
+            Object.assign(STATE.company, PKB_DEFAULTS, {
+                logo: window.PKB_DEFAULT_LOGO || ''
+            });
+            localStorage.removeItem(STORAGE_KEYS.logoCleared);
+            safeSetItem(STORAGE_KEYS.company, STATE.company.name);
+            safeSetItem(STORAGE_KEYS.phone, STATE.company.phone);
+            safeSetItem(STORAGE_KEYS.email, STATE.company.email);
+            safeSetItem(STORAGE_KEYS.website, STATE.company.website);
+            safeSetItem(STORAGE_KEYS.bank, STATE.company.bank);
+            safeSetItem(STORAGE_KEYS.currency, STATE.company.currency);
+            safeSetItem(STORAGE_KEYS.invPrefix, STATE.company.invPrefix);
+            safeSetItem(STORAGE_KEYS.rcptPrefix, STATE.company.rcptPrefix);
+            if (STATE.company.logo) safeSetItem(STORAGE_KEYS.logo, STATE.company.logo);
+
+            initCompanyProfile();
+            applyCurrencySymbols();
+            updateInvoicePreview();
+            updateReceiptPreview();
+            showToast('Restored PeeKayBee Hospitality defaults.', 'success');
+        });
+    }
+
+    const clearCompanyBtn = document.getElementById('btn_clear_company_profile');
+    if (clearCompanyBtn && !clearCompanyBtn.dataset.bound) {
+        clearCompanyBtn.dataset.bound = '1';
+        clearCompanyBtn.addEventListener('click', () => {
+            if (!confirm('Clear company name, bank details, logo, and signature on this device so you can enter another company\'s info?')) {
+                return;
+            }
+            STATE.company.name = '';
+            STATE.company.phone = '';
+            STATE.company.email = '';
+            STATE.company.website = '';
+            STATE.company.bank = '';
+            STATE.company.logo = '';
+            STATE.company.signature = '';
+
+            safeSetItem(STORAGE_KEYS.company, '');
+            safeSetItem(STORAGE_KEYS.phone, '');
+            safeSetItem(STORAGE_KEYS.email, '');
+            safeSetItem(STORAGE_KEYS.website, '');
+            safeSetItem(STORAGE_KEYS.bank, '');
+            localStorage.removeItem(STORAGE_KEYS.logo);
+            safeSetItem(STORAGE_KEYS.logoCleared, '1');
+            localStorage.removeItem(STORAGE_KEYS.signature);
+
+            if (sigPad) sigPad.clear();
+            const statusEl = document.getElementById('sig_status_text');
+            if (statusEl) statusEl.textContent = 'No signature saved';
+
+            initCompanyProfile();
+            updateInvoicePreview();
+            updateReceiptPreview();
+            showToast('Cleared! Enter your company details & upload your logo.');
         });
     }
 }
@@ -244,7 +368,7 @@ function compressImageFile(file, maxW, maxH, callback) {
             ctx.drawImage(img, 0, 0, w, h);
 
             const mime = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
-            callback(canvas.toDataURL(mime, 0.85));
+            callback(canvas.toDataURL(mime, 0.88));
         };
         img.src = evt.target.result;
     };
@@ -263,7 +387,7 @@ function initSignaturePad() {
 
     const statusEl = document.getElementById('sig_status_text');
     if (statusEl) {
-        statusEl.textContent = STATE.company.signature ? 'Signature saved' : 'No signature saved';
+        statusEl.textContent = STATE.company.signature ? 'Signature saved & active' : 'No signature saved';
     }
 
     document.getElementById('btn_clear_sig')?.addEventListener('click', () => {
@@ -284,12 +408,30 @@ function initSignaturePad() {
         const dataUrl = sigPad.toDataURL('image/png');
         STATE.company.signature = dataUrl;
         if (safeSetItem(STORAGE_KEYS.signature, dataUrl)) {
-            if (statusEl) statusEl.textContent = 'Signature saved';
+            if (statusEl) statusEl.textContent = 'Signature saved & active';
             updateInvoicePreview();
             updateReceiptPreview();
             showToast('Signature saved!', 'success');
         }
     });
+
+    const sigFileInput = document.getElementById('sig_file_input');
+    if (sigFileInput) {
+        sigFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            compressImageFile(file, 360, 140, (dataUrl) => {
+                STATE.company.signature = dataUrl;
+                if (safeSetItem(STORAGE_KEYS.signature, dataUrl)) {
+                    if (statusEl) statusEl.textContent = 'Signature image uploaded & active';
+                    updateInvoicePreview();
+                    updateReceiptPreview();
+                    showToast('Signature uploaded!', 'success');
+                }
+            });
+            e.target.value = '';
+        });
+    }
 
     window.addEventListener('resize', () => {
         if (STATE.currentTab === 'settings') {
@@ -449,10 +591,11 @@ function updateInvoicePreview() {
     document.getElementById('out_inv_sender').textContent = STATE.company.name || 'Your Business Name';
     const contactParts = [STATE.company.phone, STATE.company.email].filter(Boolean);
     document.getElementById('out_inv_contact').textContent = contactParts.join(' | ');
+    document.getElementById('out_inv_website').textContent = STATE.company.website || '';
 
     const bankBox = document.getElementById('out_inv_bank_box');
     const bankEl = document.getElementById('out_inv_bank');
-    if (STATE.company.bank.trim()) {
+    if ((STATE.company.bank || '').trim()) {
         bankEl.textContent = STATE.company.bank;
         bankBox.style.visibility = 'visible';
     } else {
@@ -583,6 +726,7 @@ function updateReceiptPreview() {
     document.getElementById('out_rcpt_sender').textContent = STATE.company.name || 'Your Business Name';
     const contactParts = [STATE.company.phone, STATE.company.email].filter(Boolean);
     document.getElementById('out_rcpt_contact').textContent = contactParts.join(' | ');
+    document.getElementById('out_rcpt_website').textContent = STATE.company.website || '';
 
     const logoImg = document.getElementById('out_rcpt_logo');
     if (STATE.company.logo) {
@@ -704,11 +848,13 @@ function saveReceiptOnly() {
 }
 
 function saveAndPrintInvoice() {
+    switchTab('invoice');
     persistInvoice();
     printDocumentTitleSafe();
 }
 
 function saveAndPrintReceipt() {
+    switchTab('receipt');
     persistReceipt();
     printDocumentTitleSafe();
 }
@@ -721,11 +867,13 @@ function printDocumentTitleSafe() {
 }
 
 function downloadInvoicePDF() {
+    switchTab('invoice');
     const rec = persistInvoice();
     exportElementToPDF('paper_invoice', `${rec.number}.pdf`);
 }
 
 function downloadReceiptPDF() {
+    switchTab('receipt');
     const rec = persistReceipt();
     exportElementToPDF('paper_receipt', `${rec.number}.pdf`);
 }
@@ -736,10 +884,11 @@ function exportElementToPDF(elementId, filename) {
 
     if (window.html2pdf) {
         const opt = {
-            margin: [5, 5, 5, 5],
+            margin: [6, 5, 6, 5],
             filename,
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
+            html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
+            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
         window.html2pdf().set(opt).from(element).save();
@@ -785,7 +934,6 @@ function renderHistory() {
     const badge = document.getElementById('history_count_badge');
     if (badge) badge.textContent = String(totalCount);
 
-    // Update Summary Stats
     const invTotal = STATE.invoices.reduce((sum, r) => sum + parseNumericAmount(r), 0);
     const rcptTotal = STATE.receipts.reduce((sum, r) => sum + parseNumericAmount(r), 0);
     document.getElementById('stat_inv_count').textContent = String(STATE.invoices.length);
@@ -969,7 +1117,7 @@ function deleteRecord(id, type) {
 // Backup & CSV Export
 function exportBackupJSON() {
     const payload = {
-        version: 2,
+        version: 3,
         exportedAt: new Date().toISOString(),
         company: STATE.company,
         invSeq: STATE.invSeq,
@@ -996,6 +1144,7 @@ function importBackupData(data) {
         safeSetItem(STORAGE_KEYS.company, STATE.company.name || '');
         safeSetItem(STORAGE_KEYS.phone, STATE.company.phone || '');
         safeSetItem(STORAGE_KEYS.email, STATE.company.email || '');
+        safeSetItem(STORAGE_KEYS.website, STATE.company.website || '');
         safeSetItem(STORAGE_KEYS.bank, STATE.company.bank || '');
         safeSetItem(STORAGE_KEYS.currency, STATE.company.currency || '₦|Naira|Kobo');
         safeSetItem(STORAGE_KEYS.invPrefix, STATE.company.invPrefix || 'INV-');

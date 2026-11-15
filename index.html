@@ -9,11 +9,12 @@
     <link rel="manifest" href="./manifest.json">
     <link rel="icon" type="image/svg+xml" href="./icon.svg">
     <link rel="stylesheet" href="./styles.css">
-    <!-- Local bundled libraries for 100% offline use -->
+    <!-- Local bundled libraries & default logo for 100% offline use -->
     <script src="./vendor/html2pdf.bundle.min.js"></script>
     <script src="./vendor/signature_pad.umd.min.js"></script>
+    <script src="./default-logo.js"></script>
 </head>
-<body>
+<body data-active-tab="invoice">
 
     <!-- Top Navigation Header -->
     <header class="top-bar">
@@ -36,7 +37,7 @@
                 <span>📁</span> History <span id="history_count_badge" class="count-badge">0</span>
             </button>
             <button class="nav-btn" data-tab="settings">
-                <span>⚙️</span> Business Profile
+                <span>⚙️</span> Business Settings
             </button>
         </nav>
     </header>
@@ -45,12 +46,12 @@
     <main class="app-container">
 
         <!-- TAB 1: INVOICE BUILDER VIEW -->
-        <div id="tab-invoice-view" class="tab-split-view">
+        <div id="tab-invoice-view" class="tab-split-view active-view">
             <!-- Left Sidebar Controls -->
             <aside class="sidebar-panel">
                 <div class="sidebar-top-actions">
                     <button class="btn btn-secondary btn-sm" id="btn_new_invoice" type="button">✨ New Invoice</button>
-                    <button class="btn btn-secondary btn-sm" type="button" onclick="window.switchTab('settings')">⚙️ Edit Business Info</button>
+                    <button class="btn btn-secondary btn-sm" type="button" onclick="window.switchTab('settings')">⚙️ Business &amp; Logo Settings</button>
                 </div>
 
                 <div class="panel-section-title">Invoice Details</div>
@@ -86,7 +87,7 @@
                 </div>
                 <div class="form-group">
                     <label for="inv_client_contact">Client Phone / Email (Optional)</label>
-                    <input type="text" id="inv_client_contact" placeholder="e.g. +234 800 000 0000">
+                    <input type="text" id="inv_client_contact" placeholder="e.g. 09060170725">
                 </div>
                 <div class="form-group">
                     <label for="inv_client_addr">Client Address</label>
@@ -115,7 +116,7 @@
 
                 <div class="panel-section-title">Notes &amp; Payment Terms</div>
                 <div class="form-group">
-                    <textarea id="inv_notes" rows="2" placeholder="Thank you for your patronage. Payment is due upon receipt."></textarea>
+                    <textarea id="inv_notes" rows="2" placeholder="Optional note or payment terms..."></textarea>
                 </div>
 
                 <div class="action-stack">
@@ -143,8 +144,9 @@
                         <div class="doc-address-grid">
                             <div class="address-block">
                                 <strong>FROM:</strong>
-                                <div class="address-content" id="out_inv_sender">Your Business Name</div>
+                                <div class="address-content" id="out_inv_sender">PeeKayBee Hospitality</div>
                                 <div class="address-sub" id="out_inv_contact"></div>
+                                <div class="address-sub" id="out_inv_website"></div>
                             </div>
                             <div class="address-block" style="text-align:right;">
                                 <strong>BILL TO:</strong>
@@ -218,7 +220,7 @@
             <aside class="sidebar-panel">
                 <div class="sidebar-top-actions">
                     <button class="btn btn-secondary btn-sm" id="btn_new_receipt" type="button">✨ New Receipt</button>
-                    <button class="btn btn-secondary btn-sm" type="button" onclick="window.switchTab('settings')">⚙️ Edit Business Info</button>
+                    <button class="btn btn-secondary btn-sm" type="button" onclick="window.switchTab('settings')">⚙️ Business &amp; Logo Settings</button>
                 </div>
 
                 <div class="panel-section-title">Receipt Details</div>
@@ -282,12 +284,13 @@
                 <div class="paper-scale-wrapper">
                     <div class="paper-document" id="paper_receipt">
                         <div class="rcpt-header">
-                            <div>
-                                <img id="out_rcpt_logo" src="" alt="Company Logo" style="display:none; max-width:180px; max-height:80px; object-fit:contain;">
+                            <div class="doc-logo-area">
+                                <img id="out_rcpt_logo" src="" alt="Company Logo" style="display:none;">
                             </div>
                             <div style="text-align:right;">
-                                <div class="address-content" style="font-weight:bold; font-size:16px;" id="out_rcpt_sender">Your Business Name</div>
+                                <div class="address-content" style="font-weight:bold; font-size:16px;" id="out_rcpt_sender">PeeKayBee Hospitality</div>
                                 <div class="address-sub" id="out_rcpt_contact"></div>
+                                <div class="address-sub" id="out_rcpt_website"></div>
                             </div>
                         </div>
 
@@ -329,7 +332,7 @@
                             </div>
                         </div>
 
-                        <div class="doc-footer" style="margin-top:auto;">
+                        <div class="doc-footer">
                             <div style="font-style:italic; color:#64748b; font-size:13px;">Received with thanks.</div>
                             <div class="signature-block" id="out_rcpt_sig_block" style="display:none;">
                                 <img id="out_rcpt_sig_img" src="" alt="Signature">
@@ -347,7 +350,7 @@
                 <div class="history-header">
                     <div>
                         <h2 style="font-size:20px; color:var(--accent); margin-bottom:4px;">Saved Invoices &amp; Receipts</h2>
-                        <p style="font-size:12px; color:var(--text-muted);">Stored privately in this browser. Export a backup anytime to move devices or stay safe.</p>
+                        <p style="font-size:12px; color:var(--text-muted);">Stored privately on this device/browser only. Export a backup anytime to move devices.</p>
                     </div>
                     <div class="backup-actions">
                         <button class="btn btn-secondary btn-sm" type="button" onclick="window.exportBackupJSON()">📤 Export Backup</button>
@@ -410,25 +413,39 @@
         <!-- TAB 4: BUSINESS PROFILE / SETTINGS VIEW -->
         <div id="tab-settings-view" class="tab-full-view" style="display: none;">
             <div class="settings-container">
-                <h2 style="font-size:20px; color:var(--accent); margin-bottom:4px;">Business Profile &amp; Branding</h2>
-                <p style="font-size:12px; color:var(--text-muted); margin-bottom:20px;">These details automatically appear on both your Invoices and Receipts.</p>
+                <div class="history-header">
+                    <div>
+                        <h2 style="font-size:20px; color:var(--accent); margin-bottom:4px;">Business Settings &amp; Branding</h2>
+                        <p style="font-size:12px; color:var(--text-muted);">
+                            Everything you set here is saved <strong>privately on your own device/browser</strong>. If another company uses this link on their device, their logo and details stay on their device and will never affect yours.
+                        </p>
+                    </div>
+                    <div class="backup-actions">
+                        <button class="btn btn-secondary btn-sm" type="button" id="btn_restore_pkb_defaults">🔄 Restore PKB Defaults</button>
+                        <button class="btn btn-danger btn-sm" type="button" id="btn_clear_company_profile">🧹 Clear for Another Company</button>
+                    </div>
+                </div>
 
                 <div class="settings-grid">
                     <div class="settings-card">
                         <div class="panel-section-title">Company Information</div>
                         <div class="form-group">
                             <label for="co_name">Company Name &amp; Address</label>
-                            <textarea id="co_name" rows="3" placeholder="e.g. PeeKayBee Hospitality Company&#10;123 Example Street, Asaba"></textarea>
+                            <textarea id="co_name" rows="2" placeholder="Enter your company name and address"></textarea>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="co_phone">Phone</label>
-                                <input type="text" id="co_phone" placeholder="+234 800 000 0000">
+                                <input type="text" id="co_phone" placeholder="e.g. 09115054181">
                             </div>
                             <div class="form-group">
                                 <label for="co_email">Email</label>
-                                <input type="email" id="co_email" placeholder="business@example.com">
+                                <input type="email" id="co_email" placeholder="e.g. info@company.com">
                             </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="co_website">Website / Social Handle (Optional)</label>
+                            <input type="text" id="co_website" placeholder="e.g. www.yourcompany.com">
                         </div>
                         <div class="form-row">
                             <div class="form-group">
@@ -455,32 +472,37 @@
                     </div>
 
                     <div class="settings-card">
-                        <div class="panel-section-title">Logo &amp; Authorized Signature</div>
+                        <div class="panel-section-title">Business Logo &amp; Authorized Signature</div>
                         <div class="form-group">
-                            <label>Company Logo (auto-resized for fast offline storage)</label>
+                            <label>Business Logo (Automatically appears on all Invoices &amp; Receipts)</label>
                             <div class="logo-preview-box">
-                                <img id="settings_logo_preview" src="" alt="No logo uploaded" style="display:none;">
+                                <img id="settings_logo_preview" src="" alt="Business Logo" style="display:none;">
                                 <span id="settings_logo_empty" style="color:var(--text-muted); font-size:12px;">No logo uploaded</span>
                             </div>
                             <div class="form-row">
                                 <label class="file-upload-btn" style="flex:1;">
-                                    📁 Upload Logo Image
+                                    📁 Upload / Change Logo
                                     <input type="file" id="logo_file_input" accept="image/*" style="display:none;">
                                 </label>
+                                <button class="btn btn-secondary btn-sm" type="button" id="btn_use_pkb_logo">Use PKB Logo</button>
                                 <button class="btn btn-danger btn-sm" type="button" id="btn_remove_logo">Remove</button>
                             </div>
                         </div>
 
                         <div class="form-group" style="margin-top:8px;">
-                            <label>Authorized Signature (Draw below)</label>
+                            <label>Authorized Signature (Draw below or upload signature image)</label>
                             <div class="sig-container">
                                 <canvas id="signature_canvas"></canvas>
                             </div>
-                            <div class="form-row" style="justify-content:space-between; align-items:center;">
+                            <div class="form-row" style="justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
                                 <span id="sig_status_text" style="font-size:11px; color:var(--text-muted);">No signature saved</span>
-                                <div style="display:flex; gap:8px;">
+                                <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                    <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
+                                        🖼️ Upload Sign
+                                        <input type="file" id="sig_file_input" accept="image/*" style="display:none;">
+                                    </label>
                                     <button class="btn btn-secondary btn-sm" type="button" id="btn_clear_sig">Clear</button>
-                                    <button class="btn btn-success btn-sm" type="button" id="btn_save_sig">Save Signature</button>
+                                    <button class="btn btn-success btn-sm" type="button" id="btn_save_sig">Save Drawn Signature</button>
                                 </div>
                             </div>
                         </div>

@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#000080">
+    <meta name="description" content="PKB Business Suite - Offline Invoice & Receipt Generator">
+    <title>PKB Business Suite — Offline Invoice & Receipt Generator</title>
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" type="image/svg+xml" href="./icon.svg">
+    <link rel="stylesheet" href="./styles.css">
+    <!-- Local bundled libraries for 100% offline use -->
+    <script src="./vendor/html2pdf.bundle.min.js"></script>
+    <script src="./vendor/signature_pad.umd.min.js"></script>
+</head>
+<body>
+
+    <!-- Top Navigation Header -->
+    <header class="top-bar">
+        <div class="brand">
+            <div class="brand-icon">📜</div>
+            <div class="brand-title">
+                <h1>PKB Business Suite</h1>
+                <p>Offline Invoice &amp; Receipt Generator <span id="offline_badge" class="status-pill">Ready Offline</span></p>
+            </div>
+        </div>
+
+        <nav class="nav-tabs" aria-label="Main Navigation">
+            <button class="nav-btn active" data-tab="invoice">
+                <span>📄</span> Invoice
+            </button>
+            <button class="nav-btn" data-tab="receipt">
+                <span>🧾</span> Receipt
+            </button>
+            <button class="nav-btn" data-tab="history">
+                <span>📁</span> History <span id="history_count_badge" class="count-badge">0</span>
+            </button>
+            <button class="nav-btn" data-tab="settings">
+                <span>⚙️</span> Business Profile
+            </button>
+        </nav>
+    </header>
+
+    <!-- App Main Container -->
+    <main class="app-container">
+
+        <!-- TAB 1: INVOICE BUILDER VIEW -->
+        <div id="tab-invoice-view" class="tab-split-view">
+            <!-- Left Sidebar Controls -->
+            <aside class="sidebar-panel">
+                <div class="sidebar-top-actions">
+                    <button class="btn btn-secondary btn-sm" id="btn_new_invoice" type="button">✨ New Invoice</button>
+                    <button class="btn btn-secondary btn-sm" type="button" onclick="window.switchTab('settings')">⚙️ Edit Business Info</button>
+                </div>
+
+                <div class="panel-section-title">Invoice Details</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="inv_no">Invoice No.</label>
+                        <input type="text" id="inv_no" placeholder="INV-0001">
+                    </div>
+                    <div class="form-group">
+                        <label for="inv_status">Status</label>
+                        <select id="inv_status">
+                            <option value="Unpaid">Unpaid</option>
+                            <option value="Paid">Paid</option>
+                            <option value="Partial">Partial</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="inv_date">Issue Date</label>
+                        <input type="date" id="inv_date">
+                    </div>
+                    <div class="form-group">
+                        <label for="inv_due_date">Due Date (Optional)</label>
+                        <input type="date" id="inv_due_date">
+                    </div>
+                </div>
+
+                <div class="panel-section-title">Client Details</div>
+                <div class="form-group">
+                    <label for="inv_client">Client Name</label>
+                    <input type="text" id="inv_client" placeholder="e.g. Saint Bon Hotel and Suites">
+                </div>
+                <div class="form-group">
+                    <label for="inv_client_contact">Client Phone / Email (Optional)</label>
+                    <input type="text" id="inv_client_contact" placeholder="e.g. +234 800 000 0000">
+                </div>
+                <div class="form-group">
+                    <label for="inv_client_addr">Client Address</label>
+                    <textarea id="inv_client_addr" rows="2" placeholder="e.g. Asaba, Nigeria"></textarea>
+                </div>
+
+                <div class="panel-section-title">Line Items</div>
+                <div id="items_editor" class="items-list"></div>
+                <button class="btn btn-secondary" id="btn_add_item" type="button">+ Add Line Item</button>
+
+                <div class="panel-section-title">Discount, Tax &amp; Delivery</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="inv_discount">Discount (<span class="currency-symbol">₦</span>)</label>
+                        <input type="number" id="inv_discount" value="0" min="0" step="any">
+                    </div>
+                    <div class="form-group">
+                        <label for="inv_tax">Tax Rate (%)</label>
+                        <input type="number" id="inv_tax" value="0" min="0" step="any">
+                    </div>
+                    <div class="form-group">
+                        <label for="inv_del">Delivery (<span class="currency-symbol">₦</span>)</label>
+                        <input type="number" id="inv_del" value="0" min="0" step="any">
+                    </div>
+                </div>
+
+                <div class="panel-section-title">Notes &amp; Payment Terms</div>
+                <div class="form-group">
+                    <textarea id="inv_notes" rows="2" placeholder="Thank you for your patronage. Payment is due upon receipt."></textarea>
+                </div>
+
+                <div class="action-stack">
+                    <button class="btn btn-secondary" type="button" onclick="window.saveInvoiceOnly()">💾 SAVE TO HISTORY</button>
+                    <button class="btn btn-primary" type="button" onclick="window.saveAndPrintInvoice()">🖨️ SAVE &amp; PRINT</button>
+                    <button class="btn btn-success" type="button" onclick="window.downloadInvoicePDF()">📥 SAVE &amp; DOWNLOAD PDF</button>
+                </div>
+            </aside>
+
+            <!-- Right Paper Live Preview -->
+            <section class="preview-panel">
+                <div class="paper-scale-wrapper">
+                    <div class="paper-document" id="paper_invoice">
+                        <div class="doc-header">
+                            <div class="doc-logo-area">
+                                <img id="out_inv_logo" src="" alt="Company Logo" style="display:none;">
+                            </div>
+                            <div class="doc-title-block">
+                                <h2>INVOICE</h2>
+                                <div class="doc-number">#<span id="out_inv_no">INV-0001</span></div>
+                                <div id="out_inv_status_badge" class="doc-status-badge status-unpaid">UNPAID</div>
+                            </div>
+                        </div>
+
+                        <div class="doc-address-grid">
+                            <div class="address-block">
+                                <strong>FROM:</strong>
+                                <div class="address-content" id="out_inv_sender">Your Business Name</div>
+                                <div class="address-sub" id="out_inv_contact"></div>
+                            </div>
+                            <div class="address-block" style="text-align:right;">
+                                <strong>BILL TO:</strong>
+                                <div class="address-content" id="out_inv_client">Client Name</div>
+                                <div class="address-sub" id="out_inv_client_contact"></div>
+                                <div class="address-content" id="out_inv_client_addr"></div>
+                                <div class="address-dates">
+                                    <div>Issued: <span id="out_inv_date"></span></div>
+                                    <div id="out_inv_due_row" style="display:none;">Due: <span id="out_inv_due_date"></span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <table class="doc-table">
+                            <thead>
+                                <tr>
+                                    <th>Description</th>
+                                    <th style="text-align:right;">Price</th>
+                                    <th style="text-align:right;">Qty</th>
+                                    <th style="text-align:right;">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="out_inv_tbody"></tbody>
+                        </table>
+
+                        <table class="doc-totals">
+                            <tr>
+                                <td>Subtotal:</td>
+                                <td><span class="currency-symbol">₦</span><span id="out_inv_sub">0.00</span></td>
+                            </tr>
+                            <tr id="out_inv_disc_row" style="display:none;">
+                                <td>Discount:</td>
+                                <td>-<span class="currency-symbol">₦</span><span id="out_inv_disc_val">0.00</span></td>
+                            </tr>
+                            <tr id="out_inv_tax_row">
+                                <td>Tax (<span id="out_inv_tax_rate">0</span>%):</td>
+                                <td><span class="currency-symbol">₦</span><span id="out_inv_tax_val">0.00</span></td>
+                            </tr>
+                            <tr id="out_inv_del_row">
+                                <td>Delivery:</td>
+                                <td><span class="currency-symbol">₦</span><span id="out_inv_del_val">0.00</span></td>
+                            </tr>
+                            <tr class="total-row">
+                                <td>TOTAL:</td>
+                                <td><span class="currency-symbol">₦</span><span id="out_inv_total">0.00</span></td>
+                            </tr>
+                        </table>
+
+                        <div id="out_inv_notes_box" class="doc-notes" style="display:none;">
+                            <strong>NOTES:</strong>
+                            <div id="out_inv_notes"></div>
+                        </div>
+
+                        <div class="doc-footer">
+                            <div class="bank-info-box" id="out_inv_bank_box">
+                                <strong>PAYMENT DETAILS:</strong>
+                                <div class="bank-info-content" id="out_inv_bank"></div>
+                            </div>
+                            <div class="signature-block" id="out_inv_sig_block" style="display:none;">
+                                <img id="out_inv_sig_img" src="" alt="Signature">
+                                <div class="signature-line">Authorized Signature</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- TAB 2: RECEIPT BUILDER VIEW -->
+        <div id="tab-receipt-view" class="tab-split-view" style="display: none;">
+            <aside class="sidebar-panel">
+                <div class="sidebar-top-actions">
+                    <button class="btn btn-secondary btn-sm" id="btn_new_receipt" type="button">✨ New Receipt</button>
+                    <button class="btn btn-secondary btn-sm" type="button" onclick="window.switchTab('settings')">⚙️ Edit Business Info</button>
+                </div>
+
+                <div class="panel-section-title">Receipt Details</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="rcpt_no">Receipt No.</label>
+                        <input type="text" id="rcpt_no" placeholder="RCT-0001">
+                    </div>
+                    <div class="form-group">
+                        <label for="rcpt_date">Date</label>
+                        <input type="date" id="rcpt_date">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="rcpt_from">Received From</label>
+                    <input type="text" id="rcpt_from" placeholder="Client / Payer Name">
+                </div>
+
+                <div class="form-group">
+                    <label for="rcpt_desc">Payment For</label>
+                    <input type="text" id="rcpt_desc" placeholder="Service / Item Description">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="rcpt_amt">Amount Paid (<span class="currency-symbol">₦</span>)</label>
+                        <input type="number" id="rcpt_amt" value="0" min="0" step="any">
+                    </div>
+                    <div class="form-group">
+                        <label for="rcpt_method">Payment Method</label>
+                        <select id="rcpt_method">
+                            <option value="Transfer">Transfer</option>
+                            <option value="Cash">Cash</option>
+                            <option value="POS">POS</option>
+                            <option value="Cheque">Cheque</option>
+                            <option value="Card">Card</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="rcpt_words">Amount in Words</label>
+                    <input type="text" id="rcpt_words" placeholder="Auto-generated from amount (editable)">
+                </div>
+
+                <div class="form-group">
+                    <label for="rcpt_bal">Balance Due (<span class="currency-symbol">₦</span>)</label>
+                    <input type="number" id="rcpt_bal" value="0" min="0" step="any">
+                </div>
+
+                <div class="action-stack">
+                    <button class="btn btn-secondary" type="button" onclick="window.saveReceiptOnly()">💾 SAVE TO HISTORY</button>
+                    <button class="btn btn-primary" type="button" onclick="window.saveAndPrintReceipt()">🖨️ SAVE &amp; PRINT</button>
+                    <button class="btn btn-success" type="button" onclick="window.downloadReceiptPDF()">📥 SAVE &amp; DOWNLOAD PDF</button>
+                </div>
+            </aside>
+
+            <!-- Receipt Paper Live Preview -->
+            <section class="preview-panel">
+                <div class="paper-scale-wrapper">
+                    <div class="paper-document" id="paper_receipt">
+                        <div class="rcpt-header">
+                            <div>
+                                <img id="out_rcpt_logo" src="" alt="Company Logo" style="display:none; max-width:180px; max-height:80px; object-fit:contain;">
+                            </div>
+                            <div style="text-align:right;">
+                                <div class="address-content" style="font-weight:bold; font-size:16px;" id="out_rcpt_sender">Your Business Name</div>
+                                <div class="address-sub" id="out_rcpt_contact"></div>
+                            </div>
+                        </div>
+
+                        <div class="rcpt-title">PAYMENT RECEIPT</div>
+
+                        <div class="rcpt-detail-row">
+                            <span class="rcpt-detail-label">Receipt No:</span>
+                            <span class="rcpt-detail-val" id="out_rcpt_no">RCT-0001</span>
+                        </div>
+                        <div class="rcpt-detail-row">
+                            <span class="rcpt-detail-label">Date:</span>
+                            <span class="rcpt-detail-val" id="out_rcpt_date"></span>
+                        </div>
+                        <div class="rcpt-detail-row">
+                            <span class="rcpt-detail-label">Payment Method:</span>
+                            <span class="rcpt-detail-val" id="out_rcpt_method">Transfer</span>
+                        </div>
+                        <div class="rcpt-detail-row">
+                            <span class="rcpt-detail-label">Received From:</span>
+                            <span class="rcpt-detail-val" style="font-weight:bold; font-size:15px; text-transform:uppercase;" id="out_rcpt_from">Client Name</span>
+                        </div>
+                        <div class="rcpt-detail-row">
+                            <span class="rcpt-detail-label">Payment For:</span>
+                            <span class="rcpt-detail-val" id="out_rcpt_desc">Service / Product Description</span>
+                        </div>
+                        <div class="rcpt-detail-row">
+                            <span class="rcpt-detail-label">Amount in Words:</span>
+                            <span class="rcpt-detail-val" style="font-style:italic;" id="out_rcpt_words">Zero Naira Only</span>
+                        </div>
+
+                        <div class="rcpt-money-banner">
+                            <div class="rcpt-money-main">
+                                <strong>AMOUNT PAID:</strong>
+                                <div class="rcpt-amount-big"><span class="currency-symbol">₦</span><span id="out_rcpt_amt">0.00</span></div>
+                            </div>
+                            <div class="rcpt-balance-sub">
+                                <span>Balance Due:</span>
+                                <span><span class="currency-symbol">₦</span><span id="out_rcpt_bal">0.00</span></span>
+                            </div>
+                        </div>
+
+                        <div class="doc-footer" style="margin-top:auto;">
+                            <div style="font-style:italic; color:#64748b; font-size:13px;">Received with thanks.</div>
+                            <div class="signature-block" id="out_rcpt_sig_block" style="display:none;">
+                                <img id="out_rcpt_sig_img" src="" alt="Signature">
+                                <div class="signature-line">Authorized Signature</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- TAB 3: SAVED HISTORY VIEW -->
+        <div id="tab-history-view" class="tab-full-view" style="display: none;">
+            <div class="history-container">
+                <div class="history-header">
+                    <div>
+                        <h2 style="font-size:20px; color:var(--accent); margin-bottom:4px;">Saved Invoices &amp; Receipts</h2>
+                        <p style="font-size:12px; color:var(--text-muted);">Stored privately in this browser. Export a backup anytime to move devices or stay safe.</p>
+                    </div>
+                    <div class="backup-actions">
+                        <button class="btn btn-secondary btn-sm" type="button" onclick="window.exportBackupJSON()">📤 Export Backup</button>
+                        <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
+                            📥 Import Backup
+                            <input type="file" id="import_backup_input" accept="application/json,.json" style="display:none;">
+                        </label>
+                        <button class="btn btn-secondary btn-sm" type="button" onclick="window.exportHistoryCSV()">📊 Export CSV</button>
+                    </div>
+                </div>
+
+                <!-- Summary Stats -->
+                <div class="stats-grid" id="history_stats">
+                    <div class="stat-card">
+                        <span class="stat-label">Invoices</span>
+                        <span class="stat-value" id="stat_inv_count">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Receipts</span>
+                        <span class="stat-value" id="stat_rcpt_count">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Total Invoiced</span>
+                        <span class="stat-value" id="stat_inv_total">₦0.00</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Total Receipted</span>
+                        <span class="stat-value" id="stat_rcpt_total">₦0.00</span>
+                    </div>
+                </div>
+
+                <!-- Search & Filter Bar -->
+                <div class="history-toolbar">
+                    <input type="text" id="history_search" placeholder="Search by number, client, or description...">
+                    <select id="history_filter">
+                        <option value="all">All Records</option>
+                        <option value="Invoice">Invoices Only</option>
+                        <option value="Receipt">Receipts Only</option>
+                    </select>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Number</th>
+                                <th>Date</th>
+                                <th>Client / Payer</th>
+                                <th>Amount</th>
+                                <th style="text-align:right;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history_tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: BUSINESS PROFILE / SETTINGS VIEW -->
+        <div id="tab-settings-view" class="tab-full-view" style="display: none;">
+            <div class="settings-container">
+                <h2 style="font-size:20px; color:var(--accent); margin-bottom:4px;">Business Profile &amp; Branding</h2>
+                <p style="font-size:12px; color:var(--text-muted); margin-bottom:20px;">These details automatically appear on both your Invoices and Receipts.</p>
+
+                <div class="settings-grid">
+                    <div class="settings-card">
+                        <div class="panel-section-title">Company Information</div>
+                        <div class="form-group">
+                            <label for="co_name">Company Name &amp; Address</label>
+                            <textarea id="co_name" rows="3" placeholder="e.g. PeeKayBee Hospitality Company&#10;123 Example Street, Asaba"></textarea>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="co_phone">Phone</label>
+                                <input type="text" id="co_phone" placeholder="+234 800 000 0000">
+                            </div>
+                            <div class="form-group">
+                                <label for="co_email">Email</label>
+                                <input type="email" id="co_email" placeholder="business@example.com">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="co_currency">Currency</label>
+                                <select id="co_currency">
+                                    <option value="₦|Naira|Kobo">₦ — Nigerian Naira (NGN)</option>
+                                    <option value="$|Dollars|Cents">$ — US Dollar (USD)</option>
+                                    <option value="£|Pounds|Pence">£ — British Pound (GBP)</option>
+                                    <option value="€|Euros|Cents">€ — Euro (EUR)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="co_inv_prefix">Number Prefixes (Inv / Rcpt)</label>
+                                <div class="form-row">
+                                    <input type="text" id="co_inv_prefix" value="INV-" placeholder="INV-">
+                                    <input type="text" id="co_rcpt_prefix" value="RCT-" placeholder="RCT-">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="co_bank">Bank Account Details (Shown on Invoices)</label>
+                            <textarea id="co_bank" rows="3" placeholder="Bank Name&#10;Account Number&#10;Account Name"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <div class="panel-section-title">Logo &amp; Authorized Signature</div>
+                        <div class="form-group">
+                            <label>Company Logo (auto-resized for fast offline storage)</label>
+                            <div class="logo-preview-box">
+                                <img id="settings_logo_preview" src="" alt="No logo uploaded" style="display:none;">
+                                <span id="settings_logo_empty" style="color:var(--text-muted); font-size:12px;">No logo uploaded</span>
+                            </div>
+                            <div class="form-row">
+                                <label class="file-upload-btn" style="flex:1;">
+                                    📁 Upload Logo Image
+                                    <input type="file" id="logo_file_input" accept="image/*" style="display:none;">
+                                </label>
+                                <button class="btn btn-danger btn-sm" type="button" id="btn_remove_logo">Remove</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top:8px;">
+                            <label>Authorized Signature (Draw below)</label>
+                            <div class="sig-container">
+                                <canvas id="signature_canvas"></canvas>
+                            </div>
+                            <div class="form-row" style="justify-content:space-between; align-items:center;">
+                                <span id="sig_status_text" style="font-size:11px; color:var(--text-muted);">No signature saved</span>
+                                <div style="display:flex; gap:8px;">
+                                    <button class="btn btn-secondary btn-sm" type="button" id="btn_clear_sig">Clear</button>
+                                    <button class="btn btn-success btn-sm" type="button" id="btn_save_sig">Save Signature</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast_container" class="toast-container" aria-live="polite"></div>
+
+    <script src="./app.js"></script>
+</body>
+</html>

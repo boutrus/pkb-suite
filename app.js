@@ -185,6 +185,16 @@ function switchTab(tabName) {
     invView.classList.toggle('active-view', tabName === 'invoice');
     rcptView.classList.toggle('active-view', tabName === 'receipt');
 
+    if (tabName === 'invoice') {
+        document.title = 'PeeKayBee Hospitality Invoice Copy';
+    } else if (tabName === 'receipt') {
+        document.title = 'PeeKayBee Hospitality Receipt Copy';
+    } else if (tabName === 'history') {
+        document.title = 'PeeKayBee Hospitality - History';
+    } else if (tabName === 'settings') {
+        document.title = 'PeeKayBee Hospitality - Settings';
+    }
+
     if (tabName === 'history') {
         renderHistory();
     }
@@ -853,51 +863,86 @@ function saveReceiptOnly() {
 function saveAndPrintInvoice() {
     switchTab('invoice');
     persistInvoice();
-    printDocumentTitleSafe();
+    printDocumentWithTitle('PeeKayBee Hospitality Invoice Copy');
 }
 
 function saveAndPrintReceipt() {
     switchTab('receipt');
     persistReceipt();
-    printDocumentTitleSafe();
+    printDocumentWithTitle('PeeKayBee Hospitality Receipt Copy');
+}
+
+function printDocumentWithTitle(docTitle) {
+    const originalTitle = document.title;
+    if (docTitle) {
+        document.title = docTitle;
+    }
+    window.print();
+    setTimeout(() => {
+        document.title = originalTitle;
+    }, 1200);
 }
 
 function printDocumentTitleSafe() {
-    const originalTitle = document.title;
-    document.title = '';
-    window.print();
-    document.title = originalTitle;
+    printDocumentWithTitle(STATE.currentTab === 'receipt' ? 'PeeKayBee Hospitality Receipt Copy' : 'PeeKayBee Hospitality Invoice Copy');
 }
 
 function downloadInvoicePDF() {
     switchTab('invoice');
     const rec = persistInvoice();
-    exportElementToPDF('paper_invoice', `${rec.number}.pdf`);
+    const docTitle = 'PeeKayBee Hospitality Invoice Copy';
+    exportElementToPDF('paper_invoice', `${docTitle}.pdf`, docTitle);
 }
 
 function downloadReceiptPDF() {
     switchTab('receipt');
     const rec = persistReceipt();
-    exportElementToPDF('paper_receipt', `${rec.number}.pdf`);
+    const docTitle = 'PeeKayBee Hospitality Receipt Copy';
+    exportElementToPDF('paper_receipt', `${docTitle}.pdf`, docTitle);
 }
 
-function exportElementToPDF(elementId, filename) {
+function exportElementToPDF(elementId, filename, docTitle) {
     const element = document.getElementById(elementId);
     if (!element) return;
+
+    const titleToUse = docTitle || (elementId === 'paper_receipt' ? 'PeeKayBee Hospitality Receipt Copy' : 'PeeKayBee Hospitality Invoice Copy');
+    const originalTitle = document.title;
+    document.title = titleToUse;
+
+    const finalFilename = filename || `${titleToUse}.pdf`;
 
     if (window.html2pdf) {
         const opt = {
             margin: [6, 5, 6, 5],
-            filename,
+            filename: finalFilename,
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
             pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
-        window.html2pdf().set(opt).from(element).save();
-        showToast(`Downloading ${filename}...`, 'success');
+        window.html2pdf()
+            .set(opt)
+            .from(element)
+            .toPdf()
+            .get('pdf')
+            .then((pdf) => {
+                pdf.setProperties({
+                    title: titleToUse,
+                    subject: titleToUse,
+                    author: 'PeeKayBee Hospitality',
+                    creator: 'PeeKayBee Hospitality'
+                });
+            })
+            .save()
+            .then(() => {
+                setTimeout(() => { document.title = originalTitle; }, 600);
+            })
+            .catch(() => {
+                document.title = originalTitle;
+            });
+        showToast(`Downloading ${finalFilename}...`, 'success');
     } else {
-        printDocumentTitleSafe();
+        printDocumentWithTitle(titleToUse);
     }
 }
 
@@ -1084,18 +1129,20 @@ function convertInvoiceToReceipt(invoiceId) {
 
 function printRecord(id, type) {
     loadRecord(id, type, false);
+    const docTitle = type === 'Invoice' ? 'PeeKayBee Hospitality Invoice Copy' : 'PeeKayBee Hospitality Receipt Copy';
     setTimeout(() => {
-        printDocumentTitleSafe();
+        printDocumentWithTitle(docTitle);
     }, 100);
 }
 
 function downloadRecordPDF(id, type) {
     loadRecord(id, type, false);
+    const docTitle = type === 'Invoice' ? 'PeeKayBee Hospitality Invoice Copy' : 'PeeKayBee Hospitality Receipt Copy';
     setTimeout(() => {
         if (type === 'Invoice') {
-            exportElementToPDF('paper_invoice', `${document.getElementById('inv_no').value || 'Invoice'}.pdf`);
+            exportElementToPDF('paper_invoice', `${docTitle}.pdf`, docTitle);
         } else {
-            exportElementToPDF('paper_receipt', `${document.getElementById('rcpt_no').value || 'Receipt'}.pdf`);
+            exportElementToPDF('paper_receipt', `${docTitle}.pdf`, docTitle);
         }
     }, 100);
 }

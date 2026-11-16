@@ -1,7 +1,7 @@
 {
-  "name": "PKB Business Suite",
-  "short_name": "PKB Suite",
-  "description": "Offline Invoice & Receipt Generator",
+  "name": "PeeKayBee Hospitality",
+  "short_name": "PeeKayBee",
+  "description": "PeeKayBee Hospitality Invoice & Receipt Generator",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

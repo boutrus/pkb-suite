@@ -863,53 +863,106 @@ function saveReceiptOnly() {
 function saveAndPrintInvoice() {
     switchTab('invoice');
     persistInvoice();
-    printDocumentWithTitle('PeeKayBee Hospitality Invoice Copy');
+    const docTitle = 'PeeKayBee Hospitality Invoice Copy';
+    exportElementToPDF('paper_invoice', `${docTitle}.pdf`, docTitle, 'print');
 }
 
 function saveAndPrintReceipt() {
     switchTab('receipt');
     persistReceipt();
-    printDocumentWithTitle('PeeKayBee Hospitality Receipt Copy');
-}
-
-function printDocumentWithTitle(docTitle) {
-    const originalTitle = document.title;
-    if (docTitle) {
-        document.title = docTitle;
-    }
-    window.print();
-    setTimeout(() => {
-        document.title = originalTitle;
-    }, 1200);
-}
-
-function printDocumentTitleSafe() {
-    printDocumentWithTitle(STATE.currentTab === 'receipt' ? 'PeeKayBee Hospitality Receipt Copy' : 'PeeKayBee Hospitality Invoice Copy');
+    const docTitle = 'PeeKayBee Hospitality Receipt Copy';
+    exportElementToPDF('paper_receipt', `${docTitle}.pdf`, docTitle, 'print');
 }
 
 function downloadInvoicePDF() {
     switchTab('invoice');
-    const rec = persistInvoice();
+    persistInvoice();
     const docTitle = 'PeeKayBee Hospitality Invoice Copy';
-    exportElementToPDF('paper_invoice', `${docTitle}.pdf`, docTitle);
+    exportElementToPDF('paper_invoice', `${docTitle}.pdf`, docTitle, 'download');
 }
 
 function downloadReceiptPDF() {
     switchTab('receipt');
-    const rec = persistReceipt();
+    persistReceipt();
     const docTitle = 'PeeKayBee Hospitality Receipt Copy';
-    exportElementToPDF('paper_receipt', `${docTitle}.pdf`, docTitle);
+    exportElementToPDF('paper_receipt', `${docTitle}.pdf`, docTitle, 'download');
 }
 
-function exportElementToPDF(elementId, filename, docTitle) {
+function handleCleanPDFOutput(blob, filename, docTitle, action) {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const file = new File([blob], filename, { type: 'application/pdf' });
+    const blobUrl = URL.createObjectURL(blob);
+
+    if (action === 'print') {
+        // On iOS devices, sharing the PDF file lets users tap "Print" or "Save to Files"
+        // without Safari injecting the website URL or date/time stamp!
+        if (isIOS && navigator.canShare && navigator.canShare({ files: [file] })) {
+            navigator.share({
+                files: [file],
+                title: docTitle
+            }).catch(() => {
+                window.open(blobUrl, '_blank');
+            });
+            showToast('Opening clean print/share sheet...', 'success');
+            return;
+        }
+
+        // On desktop or when share is not available, print via a hidden iframe
+        const printIframe = document.createElement('iframe');
+        printIframe.style.position = 'fixed';
+        printIframe.style.right = '0';
+        printIframe.style.bottom = '0';
+        printIframe.style.width = '0';
+        printIframe.style.height = '0';
+        printIframe.style.border = '0';
+        printIframe.src = blobUrl;
+        document.body.appendChild(printIframe);
+        printIframe.onload = () => {
+            try {
+                printIframe.contentWindow.focus();
+                printIframe.contentWindow.print();
+            } catch (e) {
+                window.open(blobUrl, '_blank');
+            }
+            setTimeout(() => {
+                try { document.body.removeChild(printIframe); } catch (e) {}
+            }, 60000);
+        };
+        showToast('Opening clean print dialog...', 'success');
+        return;
+    }
+
+    // Default: 'download'
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    if (isIOS) {
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            navigator.share({
+                files: [file],
+                title: docTitle
+            }).catch(() => {
+                window.open(blobUrl, '_blank');
+            });
+        } else {
+            window.open(blobUrl, '_blank');
+        }
+    }
+
+    showToast(`Saved ${filename}`, 'success');
+}
+
+function exportElementToPDF(elementId, filename, docTitle, action = 'download') {
     const element = document.getElementById(elementId);
     if (!element) return;
 
     const titleToUse = docTitle || (elementId === 'paper_receipt' ? 'PeeKayBee Hospitality Receipt Copy' : 'PeeKayBee Hospitality Invoice Copy');
-    const originalTitle = document.title;
-    document.title = titleToUse;
-
     const finalFilename = filename || `${titleToUse}.pdf`;
+    showToast('Generating clean PDF...', 'info');
 
     if (window.html2pdf) {
         const opt = {
@@ -932,17 +985,17 @@ function exportElementToPDF(elementId, filename, docTitle) {
                     author: 'PeeKayBee Hospitality',
                     creator: 'PeeKayBee Hospitality'
                 });
+                return pdf.output('blob');
             })
-            .save()
-            .then(() => {
-                setTimeout(() => { document.title = originalTitle; }, 600);
+            .then((blob) => {
+                handleCleanPDFOutput(blob, finalFilename, titleToUse, action);
             })
-            .catch(() => {
-                document.title = originalTitle;
+            .catch((err) => {
+                console.error(err);
+                showToast('Error generating PDF.', 'error');
             });
-        showToast(`Downloading ${finalFilename}...`, 'success');
     } else {
-        printDocumentWithTitle(titleToUse);
+        showToast('PDF engine not loaded.', 'error');
     }
 }
 
@@ -1130,21 +1183,19 @@ function convertInvoiceToReceipt(invoiceId) {
 function printRecord(id, type) {
     loadRecord(id, type, false);
     const docTitle = type === 'Invoice' ? 'PeeKayBee Hospitality Invoice Copy' : 'PeeKayBee Hospitality Receipt Copy';
+    const elementId = type === 'Invoice' ? 'paper_invoice' : 'paper_receipt';
     setTimeout(() => {
-        printDocumentWithTitle(docTitle);
-    }, 100);
+        exportElementToPDF(elementId, `${docTitle}.pdf`, docTitle, 'print');
+    }, 150);
 }
 
 function downloadRecordPDF(id, type) {
     loadRecord(id, type, false);
     const docTitle = type === 'Invoice' ? 'PeeKayBee Hospitality Invoice Copy' : 'PeeKayBee Hospitality Receipt Copy';
+    const elementId = type === 'Invoice' ? 'paper_invoice' : 'paper_receipt';
     setTimeout(() => {
-        if (type === 'Invoice') {
-            exportElementToPDF('paper_invoice', `${docTitle}.pdf`, docTitle);
-        } else {
-            exportElementToPDF('paper_receipt', `${docTitle}.pdf`, docTitle);
-        }
-    }, 100);
+        exportElementToPDF(elementId, `${docTitle}.pdf`, docTitle, 'download');
+    }, 150);
 }
 
 function deleteRecord(id, type) {

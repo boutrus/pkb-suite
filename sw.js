@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pkb-offline-suite-v6';
+const CACHE_NAME = 'pkb-offline-suite-v7';
 const ASSETS = [
     './',
     './index.html',

@@ -186,13 +186,13 @@ function switchTab(tabName) {
     rcptView.classList.toggle('active-view', tabName === 'receipt');
 
     if (tabName === 'invoice') {
-        document.title = 'PeeKayBee Hospitality Invoice Copy';
+        document.title = 'Invoice';
     } else if (tabName === 'receipt') {
-        document.title = 'PeeKayBee Hospitality Receipt Copy';
+        document.title = 'Receipt';
     } else if (tabName === 'history') {
-        document.title = 'PeeKayBee Hospitality - History';
+        document.title = 'History - PeeKayBee Hospitality';
     } else if (tabName === 'settings') {
-        document.title = 'PeeKayBee Hospitality - Settings';
+        document.title = 'Settings - PeeKayBee Hospitality';
     }
 
     if (tabName === 'history') {
@@ -863,28 +863,28 @@ function saveReceiptOnly() {
 function saveAndPrintInvoice() {
     switchTab('invoice');
     persistInvoice();
-    const docTitle = 'PeeKayBee Hospitality Invoice Copy';
+    const docTitle = 'Invoice';
     exportElementToPDF('paper_invoice', `${docTitle}.pdf`, docTitle, 'print');
 }
 
 function saveAndPrintReceipt() {
     switchTab('receipt');
     persistReceipt();
-    const docTitle = 'PeeKayBee Hospitality Receipt Copy';
+    const docTitle = 'Receipt';
     exportElementToPDF('paper_receipt', `${docTitle}.pdf`, docTitle, 'print');
 }
 
 function downloadInvoicePDF() {
     switchTab('invoice');
     persistInvoice();
-    const docTitle = 'PeeKayBee Hospitality Invoice Copy';
+    const docTitle = 'Invoice';
     exportElementToPDF('paper_invoice', `${docTitle}.pdf`, docTitle, 'download');
 }
 
 function downloadReceiptPDF() {
     switchTab('receipt');
     persistReceipt();
-    const docTitle = 'PeeKayBee Hospitality Receipt Copy';
+    const docTitle = 'Receipt';
     exportElementToPDF('paper_receipt', `${docTitle}.pdf`, docTitle, 'download');
 }
 
@@ -960,7 +960,7 @@ function exportElementToPDF(elementId, filename, docTitle, action = 'download') 
     const element = document.getElementById(elementId);
     if (!element) return;
 
-    const titleToUse = docTitle || (elementId === 'paper_receipt' ? 'PeeKayBee Hospitality Receipt Copy' : 'PeeKayBee Hospitality Invoice Copy');
+    const titleToUse = docTitle || (elementId === 'paper_receipt' ? 'Receipt' : 'Invoice');
     const finalFilename = filename || `${titleToUse}.pdf`;
     showToast('Generating clean PDF...', 'info');
 
@@ -1182,7 +1182,7 @@ function convertInvoiceToReceipt(invoiceId) {
 
 function printRecord(id, type) {
     loadRecord(id, type, false);
-    const docTitle = type === 'Invoice' ? 'PeeKayBee Hospitality Invoice Copy' : 'PeeKayBee Hospitality Receipt Copy';
+    const docTitle = type === 'Invoice' ? 'Invoice' : 'Receipt';
     const elementId = type === 'Invoice' ? 'paper_invoice' : 'paper_receipt';
     setTimeout(() => {
         exportElementToPDF(elementId, `${docTitle}.pdf`, docTitle, 'print');
@@ -1191,7 +1191,7 @@ function printRecord(id, type) {
 
 function downloadRecordPDF(id, type) {
     loadRecord(id, type, false);
-    const docTitle = type === 'Invoice' ? 'PeeKayBee Hospitality Invoice Copy' : 'PeeKayBee Hospitality Receipt Copy';
+    const docTitle = type === 'Invoice' ? 'Invoice' : 'Receipt';
     const elementId = type === 'Invoice' ? 'paper_invoice' : 'paper_receipt';
     setTimeout(() => {
         exportElementToPDF(elementId, `${docTitle}.pdf`, docTitle, 'download');

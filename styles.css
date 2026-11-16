@@ -957,10 +957,10 @@ textarea {
     }
 }
 
-/* Print Rules — Strictly 1 Active Document on 1 Single Page */
+/* Print Rules — Strictly 1 Active Document on 1 Single Page without Browser Headers/Footers */
 @page {
     size: A4 portrait;
-    margin: 8mm;
+    margin: 0;
 }
 
 @media print {
@@ -1001,7 +1001,7 @@ textarea {
         min-height: 0 !important;
         height: auto !important;
         box-shadow: none !important;
-        padding: 6mm 8mm !important;
+        padding: 8mm 10mm !important;
         margin: 0 !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;

@@ -1,10 +1,14 @@
 // PKB Business Suite — Standalone Offline Invoice & Receipt Generator
 
+// Purge any legacy stored website URL from prior sessions
+try {
+    localStorage.removeItem('pkb_off_website');
+} catch (e) {}
+
 const STORAGE_KEYS = {
     company: 'pkb_off_company',
     phone: 'pkb_off_phone',
     email: 'pkb_off_email',
-    website: 'pkb_off_website',
     bank: 'pkb_off_bank',
     logo: 'pkb_off_logo',
     logoCleared: 'pkb_off_logo_cleared',
@@ -22,7 +26,6 @@ const PKB_DEFAULTS = {
     name: 'PeeKayBee Hospitality',
     phone: '09115054181',
     email: 'peekaybeehospitality@gmail.com',
-    website: '',
     bank: 'Monie Point\n9115054181\nPeeKayBee Prime/Hospitality',
     currency: '₦|Naira|Kobo',
     invPrefix: 'INV-',
@@ -61,6 +64,11 @@ function getInitialField(storageKey, defaultVal) {
     return val;
 }
 
+function stripWebUrls(str) {
+    if (!str) return '';
+    return str.replace(/(?:https?:\/\/|www\.)[^\s/$.?#].[^\s]*/gi, '').trim();
+}
+
 const STATE = {
     currentTab: 'invoice',
     editingInvoiceId: null,
@@ -69,7 +77,6 @@ const STATE = {
         name: getInitialField(STORAGE_KEYS.company, PKB_DEFAULTS.name),
         phone: getInitialField(STORAGE_KEYS.phone, PKB_DEFAULTS.phone),
         email: getInitialField(STORAGE_KEYS.email, PKB_DEFAULTS.email),
-        website: getInitialField(STORAGE_KEYS.website, PKB_DEFAULTS.website),
         bank: getInitialField(STORAGE_KEYS.bank, PKB_DEFAULTS.bank),
         logo: getInitialLogo(),
         signature: localStorage.getItem(STORAGE_KEYS.signature) || '',
@@ -192,7 +199,6 @@ function initCompanyProfile() {
         { id: 'co_name', key: 'name', storage: STORAGE_KEYS.company },
         { id: 'co_phone', key: 'phone', storage: STORAGE_KEYS.phone },
         { id: 'co_email', key: 'email', storage: STORAGE_KEYS.email },
-        { id: 'co_website', key: 'website', storage: STORAGE_KEYS.website },
         { id: 'co_bank', key: 'bank', storage: STORAGE_KEYS.bank },
         { id: 'co_currency', key: 'currency', storage: STORAGE_KEYS.currency },
         { id: 'co_inv_prefix', key: 'invPrefix', storage: STORAGE_KEYS.invPrefix },
@@ -282,10 +288,10 @@ function initCompanyProfile() {
                 logo: window.PKB_DEFAULT_LOGO || ''
             });
             localStorage.removeItem(STORAGE_KEYS.logoCleared);
+            try { localStorage.removeItem('pkb_off_website'); } catch (e) {}
             safeSetItem(STORAGE_KEYS.company, STATE.company.name);
             safeSetItem(STORAGE_KEYS.phone, STATE.company.phone);
             safeSetItem(STORAGE_KEYS.email, STATE.company.email);
-            safeSetItem(STORAGE_KEYS.website, STATE.company.website);
             safeSetItem(STORAGE_KEYS.bank, STATE.company.bank);
             safeSetItem(STORAGE_KEYS.currency, STATE.company.currency);
             safeSetItem(STORAGE_KEYS.invPrefix, STATE.company.invPrefix);
@@ -310,7 +316,6 @@ function initCompanyProfile() {
             STATE.company.name = '';
             STATE.company.phone = '';
             STATE.company.email = '';
-            STATE.company.website = '';
             STATE.company.bank = '';
             STATE.company.logo = '';
             STATE.company.signature = '';
@@ -318,7 +323,7 @@ function initCompanyProfile() {
             safeSetItem(STORAGE_KEYS.company, '');
             safeSetItem(STORAGE_KEYS.phone, '');
             safeSetItem(STORAGE_KEYS.email, '');
-            safeSetItem(STORAGE_KEYS.website, '');
+            try { localStorage.removeItem('pkb_off_website'); } catch (e) {}
             safeSetItem(STORAGE_KEYS.bank, '');
             localStorage.removeItem(STORAGE_KEYS.logo);
             safeSetItem(STORAGE_KEYS.logoCleared, '1');
@@ -589,7 +594,7 @@ function updateInvoicePreview() {
     const { symbol } = getCurrencyParts();
 
     document.getElementById('out_inv_sender').textContent = STATE.company.name || 'Your Business Name';
-    const contactParts = [STATE.company.phone, STATE.company.email].filter(Boolean);
+    const contactParts = [stripWebUrls(STATE.company.phone), stripWebUrls(STATE.company.email)].filter(Boolean);
     document.getElementById('out_inv_contact').textContent = contactParts.join(' | ');
 
     const bankBox = document.getElementById('out_inv_bank_box');
@@ -723,7 +728,7 @@ function resetReceiptForm(notify = false) {
 
 function updateReceiptPreview() {
     document.getElementById('out_rcpt_sender').textContent = STATE.company.name || 'Your Business Name';
-    const contactParts = [STATE.company.phone, STATE.company.email].filter(Boolean);
+    const contactParts = [stripWebUrls(STATE.company.phone), stripWebUrls(STATE.company.email)].filter(Boolean);
     document.getElementById('out_rcpt_contact').textContent = contactParts.join(' | ');
 
     const logoImg = document.getElementById('out_rcpt_logo');
@@ -1142,7 +1147,7 @@ function importBackupData(data) {
         safeSetItem(STORAGE_KEYS.company, STATE.company.name || '');
         safeSetItem(STORAGE_KEYS.phone, STATE.company.phone || '');
         safeSetItem(STORAGE_KEYS.email, STATE.company.email || '');
-        safeSetItem(STORAGE_KEYS.website, STATE.company.website || '');
+        try { localStorage.removeItem('pkb_off_website'); } catch (e) {}
         safeSetItem(STORAGE_KEYS.bank, STATE.company.bank || '');
         safeSetItem(STORAGE_KEYS.currency, STATE.company.currency || '₦|Naira|Kobo');
         safeSetItem(STORAGE_KEYS.invPrefix, STATE.company.invPrefix || 'INV-');

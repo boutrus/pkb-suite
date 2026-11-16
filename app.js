@@ -591,7 +591,6 @@ function updateInvoicePreview() {
     document.getElementById('out_inv_sender').textContent = STATE.company.name || 'Your Business Name';
     const contactParts = [STATE.company.phone, STATE.company.email].filter(Boolean);
     document.getElementById('out_inv_contact').textContent = contactParts.join(' | ');
-    document.getElementById('out_inv_website').textContent = STATE.company.website || '';
 
     const bankBox = document.getElementById('out_inv_bank_box');
     const bankEl = document.getElementById('out_inv_bank');
@@ -726,7 +725,6 @@ function updateReceiptPreview() {
     document.getElementById('out_rcpt_sender').textContent = STATE.company.name || 'Your Business Name';
     const contactParts = [STATE.company.phone, STATE.company.email].filter(Boolean);
     document.getElementById('out_rcpt_contact').textContent = contactParts.join(' | ');
-    document.getElementById('out_rcpt_website').textContent = STATE.company.website || '';
 
     const logoImg = document.getElementById('out_rcpt_logo');
     if (STATE.company.logo) {

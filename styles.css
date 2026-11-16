@@ -474,12 +474,12 @@ textarea {
 }
 
 .doc-title-block h2 {
-    font-size: 32px;
+    font-size: 20px;
     color: #000080;
     font-weight: 900;
-    letter-spacing: 2px;
+    letter-spacing: 0.8px;
     text-transform: uppercase;
-    line-height: 1;
+    line-height: 1.2;
     margin-bottom: 4px;
 }
 
@@ -713,10 +713,11 @@ textarea {
 .rcpt-title {
     text-align: center;
     color: #000080;
-    font-size: 24px;
+    font-size: 20px;
     font-weight: 900;
-    letter-spacing: 2px;
-    margin: 12px 0 16px 0;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin: 10px 0 14px 0;
 }
 
 .rcpt-detail-row {
